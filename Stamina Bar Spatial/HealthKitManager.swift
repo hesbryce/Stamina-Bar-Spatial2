@@ -1,5 +1,13 @@
 //
 //  HealthKitManager.swift
+//  Stamina Bar Spatial
+//
+//  Created by Bryce Ellis on 9/25/24.
+//
+
+
+//
+//  HealthKitManager.swift
 //  Spatial Stamina Bar
 //
 //  Created by Bryce Ellis on 9/25/24.
@@ -9,9 +17,7 @@ import Foundation
 import HealthKit
 
 class HealthKitManager: ObservableObject {
-    @Published var isHeartRateVariabilityAvailable: Bool = false
     @Published var isHeartRateAvailable: Bool = false
-    @Published var latestHeartRateVariability: Double = 0
     @Published var latestHeartRate: Double = 0.0
     var query: HKQuery?
 
@@ -20,7 +26,7 @@ class HealthKitManager: ObservableObject {
     init() {
         if HKHealthStore.isHealthDataAvailable() {
             healthStore = HKHealthStore()
-            //healthDataAccessRequest()
+            healthDataAccessRequest()
         } else {
             
         }
@@ -30,14 +36,13 @@ class HealthKitManager: ObservableObject {
     func healthDataAccessRequest() {
         
         let readTypes: Set = [
-            HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
-//            HKQuantityType.quantityType(forIdentifier: .heartRate)!
+//            HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
+            HKQuantityType.quantityType(forIdentifier: .heartRate)!
         ]
         
         
         healthStore?.requestAuthorization(toShare: [], read: readTypes) { success, error in
             if success {
-                self.startHeartRateVariabilityQuery()
 //                self.startHeartRateQuery()
             } else {
 
@@ -45,32 +50,35 @@ class HealthKitManager: ObservableObject {
         }
     }
     
-//  MARK: HRV
-    func startHeartRateVariabilityQuery() {
-        guard let heartRateVariabilityType = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else { return }
+    
+    func startHeartRateQuery() {
+        guard let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else { return }
         
-        let query = HKAnchoredObjectQuery(type: heartRateVariabilityType,
+        let query = HKAnchoredObjectQuery(type: heartRateType,
                                           predicate: nil,
                                           anchor: nil,
                                           limit: HKObjectQueryNoLimit) { query, samples, deletedObjects, anchor, error in
-            self.updateHeartRateVariability(samples)
+            self.updateHeartRates(samples)
         }
         
         query.updateHandler = { query, samples, deletedObjects, anchor, error in
-            self.updateHeartRateVariability(samples)
+            self.updateHeartRates(samples)
         }
         
         healthStore?.execute(query)
         self.query = query
     }
     
-    
-    private func updateHeartRateVariability(_ samples: [HKSample]? ) {
-        guard let heartRateVariabilitySample = samples as? [HKQuantitySample] else { return }
+    private func updateHeartRates(_ samples: [HKSample]?) {
+        guard let heartRateSamples = samples as? [HKQuantitySample] else { return }
         
         DispatchQueue.main.async {
-            self.latestHeartRateVariability = heartRateVariabilitySample.last?.quantity.doubleValue(for: HKUnit(from: "ms")) ?? 0
-            self.isHeartRateVariabilityAvailable = !heartRateVariabilitySample.isEmpty
+            self.latestHeartRate = heartRateSamples.last?.quantity.doubleValue(for: HKUnit(from: "count/min")) ?? 0
+            self.isHeartRateAvailable = !heartRateSamples.isEmpty
         }
     }
+    
+    
+    
+  
 }
